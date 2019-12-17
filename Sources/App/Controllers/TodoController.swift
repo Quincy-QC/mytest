@@ -1,4 +1,5 @@
 import Vapor
+import JWT
 
 /// Controls basic CRUD operations on `Todo`s.
 final class TodoController {
@@ -10,7 +11,16 @@ final class TodoController {
     /// Saves a decoded `Todo` to the database.
     func create(_ req: Request) throws -> Future<Todo> {
         return try req.content.decode(Todo.self).flatMap { todo in
-            return todo.save(on: req)
+            return todo.create(on: req)
+        }
+    }
+    
+    func update(_ req: Request) throws -> Future<Todo> {
+        return try req.content.decode(Todo.self).flatMap { todo in
+            if todo.title == "second" {
+                throw Abort(.badRequest, reason: "this is error")
+            }
+            return todo.update(on: req, originalID: todo.id!)
         }
     }
 
@@ -19,5 +29,13 @@ final class TodoController {
         return try req.parameters.next(Todo.self).flatMap { todo in
             return todo.delete(on: req)
         }.transform(to: .ok)
+    }
+    
+    func test(_ req: Request) throws -> Future<String> {
+        return try req.content.decode(User.self).flatMap { user in
+            let data = try JWT(payload: user).sign(using: .hs256(key: "secret"))
+            let futureString = req.eventLoop.future(String(data: data, encoding: .utf8)!)
+            return futureString
+        }
     }
 }
